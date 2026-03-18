@@ -49,6 +49,8 @@ std::string RunModeToString(RunMode mode) {
             return "extractOnly";
         case RunMode::kAnalyzeOnly:
             return "analyzeOnly";
+        case RunMode::kInspectSamplingDiagnostics:
+            return "inspectSamplingDiagnostics";
         case RunMode::kInspectArtifacts:
             return "inspectArtifacts";
         case RunMode::kFunRun:
@@ -69,6 +71,9 @@ RunMode ParseRunMode(const std::string& value) {
     }
     if (value == "analyzeOnly") {
         return RunMode::kAnalyzeOnly;
+    }
+    if (value == "inspectSamplingDiagnostics") {
+        return RunMode::kInspectSamplingDiagnostics;
     }
     if (value == "inspectArtifacts") {
         return RunMode::kInspectArtifacts;

@@ -15,6 +15,7 @@ enum class RunMode {
     kSampleOnly,
     kExtractOnly,
     kAnalyzeOnly,
+    kInspectSamplingDiagnostics,
     kInspectArtifacts,
     kFunRun
 };

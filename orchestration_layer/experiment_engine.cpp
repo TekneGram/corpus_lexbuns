@@ -19,6 +19,7 @@
 #include "../analysis_layer/artifact_inspector.hpp"
 #include "../analysis_layer/comparison_analyzer.hpp"
 #include "../analysis_layer/robust_set_builder.hpp"
+#include "../analysis_layer/sampling_diagnostics_builder.hpp"
 #include "../analysis_layer/stability_analyzer.hpp"
 #include "../extraction_layer/conditional_extractor.hpp"
 #include "../extraction_layer/unconditional_extractor.hpp"
@@ -119,6 +120,28 @@ std::vector<std::string> ListDirectoryFiles(const std::string& dir_path) {
 
 bool IsJsonPath(const std::string& path) {
     return path.size() >= 5U && path.substr(path.size() - 5U) == ".json";
+}
+
+ExperimentOptions LoadOptionsFromRunManifest(const std::string& artifact_root) {
+    const std::string manifest_path = JoinPathLocal(artifact_root, "run_manifest.json");
+    std::ifstream input(manifest_path.c_str(), std::ios::in | std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("Run manifest not found: " + manifest_path);
+    }
+
+    std::ostringstream buffer;
+    buffer << input.rdbuf();
+    nlohmann::json payload;
+    try {
+        payload = nlohmann::json::parse(buffer.str());
+    } catch (const std::exception&) {
+        throw std::runtime_error("Failed to parse run manifest: " + manifest_path);
+    }
+
+    if (!payload.is_object() || !payload.contains("options") || !payload["options"].is_object()) {
+        throw std::runtime_error("Run manifest missing options payload: " + manifest_path);
+    }
+    return ExperimentOptions::FromJson(payload["options"]);
 }
 
 } // namespace
@@ -553,6 +576,59 @@ ExperimentRunResult ExperimentEngine::run_analyze_only(const CorpusDataset& data
     return result;
 }
 
+ExperimentRunResult ExperimentEngine::run_sampling_diagnostics_only(
+    const ExperimentOptions& options,
+    const ProgressEmitter* progress_emitter) const {
+    const std::string artifact_root = ArtifactRootFor(options);
+    const ExperimentOptions manifest_options = LoadOptionsFromRunManifest(artifact_root);
+    CorpusDataset dataset = open_dataset(manifest_options);
+
+    ExperimentRunResult result;
+    result.run_mode = options.mode;
+    result.experiment_code = options.requested_experiment_code;
+    result.artifact_dir = artifact_root;
+
+    SampleConditionPlanner planner;
+    DocumentPoolBuilder pool_builder;
+    CorpusSampler sampler(manifest_options.random_seed);
+    SamplingDiagnosticsBuilder diagnostics_builder;
+    const std::vector<SamplingDesign> designs = planner.build_sampling_designs(manifest_options);
+
+    for (std::size_t i = 0; i < designs.size(); ++i) {
+        const SamplingDesign& design = designs[i];
+        const CompositionConfig* composition = FindCompositionConfig(manifest_options, design.composition_label);
+        if (!composition) {
+            throw std::runtime_error("Missing composition config for label: " + design.composition_label);
+        }
+
+        const std::vector<DocumentInfo> pool = pool_builder.build_pool(dataset, *composition);
+        const std::string membership_path =
+            join_path(artifact_root, SampleMembershipArtifactName(design.sampling_design_id));
+        SamplingDesign loaded_design;
+        const std::vector<SampledCorpus> samples =
+            sampler.load_membership_artifact(membership_path, &loaded_design);
+
+        const nlohmann::json diagnostics =
+            diagnostics_builder.build(loaded_design, pool, samples, 10000U);
+        const std::string diagnostics_path =
+            join_path(artifact_root, SamplingDiagnosticsArtifactName(design.sampling_design_id));
+        diagnostics_builder.write(diagnostics_path, diagnostics);
+
+        ArtifactDescriptor artifact;
+        artifact.artifact_type = "sampling_diagnostics";
+        artifact.artifact_path = diagnostics_path;
+        artifact.related_id = design.sampling_design_id;
+        result.artifacts.push_back(artifact);
+
+        emit_stage_progress(progress_emitter,
+                            "sampling_diagnostics",
+                            "sampling diagnostics written for " + design.sampling_design_id,
+                            static_cast<int>((100U * (i + 1U)) / std::max<std::size_t>(1U, designs.size())));
+    }
+
+    return result;
+}
+
 void ExperimentEngine::write_final_comparison_artifact(const ExperimentRunResult& result) const {
     if (result.artifact_dir.empty()) {
         return;
@@ -576,6 +652,14 @@ ExperimentRunResult ExperimentEngine::run(const ExperimentOptions& options,
 
     if (options.mode == RunMode::kFunRun) {
         return run_fun_mode(options, progress_emitter);
+    }
+
+    if (options.mode == RunMode::kInspectSamplingDiagnostics) {
+        emit_stage_progress(progress_emitter, "sampling_diagnostics", "run started", 0);
+        ExperimentRunResult diagnostics_result =
+            run_sampling_diagnostics_only(options, progress_emitter);
+        emit_stage_progress(progress_emitter, "sampling_diagnostics", "run completed", 100);
+        return diagnostics_result;
     }
 
     if (options.mode == RunMode::kInspectArtifacts) {
@@ -645,6 +729,7 @@ ExperimentRunResult ExperimentEngine::run(const ExperimentOptions& options,
         case RunMode::kAnalyzeOnly:
             result = run_analyze_only(dataset, conditions, effective_options, progress_emitter);
             break;
+        case RunMode::kInspectSamplingDiagnostics:
         case RunMode::kInspectArtifacts:
         case RunMode::kFunRun:
             break;
