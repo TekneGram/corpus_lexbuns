@@ -6,6 +6,8 @@ However, the problem with this is that is makes comparing corpora of different s
 
 So, we need a way to extract lexical bundles that is not dependent on the corpus size. This experiment will attempt to show that a robust bundle set can be extracted using the following methodology.
 
+Note that any numbers below are placeholder values for demonstration and should never be hardcoded. The user may wish to update them.
+
 ## 1. Build a set of corpus samples, e.g., 10,000 samples
 Vary the size of the samples in each set.
 - 10,000 samples of size 100,000 words
