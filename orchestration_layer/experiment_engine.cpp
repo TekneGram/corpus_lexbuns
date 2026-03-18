@@ -596,6 +596,7 @@ ExperimentRunResult ExperimentEngine::run(const ExperimentOptions& options,
             artifact.artifact_path = inspection.artifact_path;
             artifact.related_id = "";
             inspect_result.artifacts.push_back(artifact);
+            inspect_result.inspection_results.push_back(inspection);
         }
         emit_stage_progress(progress_emitter, "inspect", "artifact inspection completed", 100);
         return inspect_result;

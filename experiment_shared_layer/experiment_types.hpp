@@ -224,6 +224,7 @@ struct ExperimentRunResult {
     std::string artifact_dir;
     RunMode run_mode;
     std::vector<ArtifactDescriptor> artifacts;
+    std::vector<ArtifactInspectionResult> inspection_results;
     std::vector<SampleSummary> sample_summaries;
     std::vector<ConditionRunResult> condition_results;
     std::vector<ComparisonScore> comparisons;

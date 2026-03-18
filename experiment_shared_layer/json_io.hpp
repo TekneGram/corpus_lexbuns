@@ -15,6 +15,7 @@ nlohmann::json ToJson(const FeatureMassStat& stat);
 nlohmann::json ToJson(const ConditionAggregate& aggregate);
 nlohmann::json ToJson(const RobustBundleSet& robust_set);
 nlohmann::json ToJson(const ArtifactDescriptor& artifact);
+nlohmann::json ToJson(const ArtifactInspectionResult& inspection);
 nlohmann::json ToJson(const ComparisonScore& comparison);
 nlohmann::json ToJson(const ExperimentManifest& manifest);
 nlohmann::json ToJson(const ConditionRunResult& result);

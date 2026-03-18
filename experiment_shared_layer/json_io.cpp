@@ -226,6 +226,14 @@ nlohmann::json ToJson(const ComparisonScore& comparison) {
     };
 }
 
+nlohmann::json ToJson(const ArtifactInspectionResult& inspection) {
+    return nlohmann::json{
+        {"artifactType", inspection.artifact_type},
+        {"artifactPath", inspection.artifact_path},
+        {"summary", inspection.summary_json}
+    };
+}
+
 nlohmann::json ToJson(const ExperimentManifest& manifest) {
     return nlohmann::json{
         {"experimentCode", manifest.experiment_code},
@@ -252,6 +260,11 @@ nlohmann::json ToJson(const ExperimentRunResult& result) {
         artifacts.push_back(ToJson(result.artifacts[i]));
     }
 
+    nlohmann::json inspection_results = nlohmann::json::array();
+    for (std::size_t i = 0; i < result.inspection_results.size(); ++i) {
+        inspection_results.push_back(ToJson(result.inspection_results[i]));
+    }
+
     nlohmann::json sample_summaries = nlohmann::json::array();
     for (std::size_t i = 0; i < result.sample_summaries.size(); ++i) {
         sample_summaries.push_back(ToJson(result.sample_summaries[i]));
@@ -272,6 +285,7 @@ nlohmann::json ToJson(const ExperimentRunResult& result) {
         {"artifactDir", result.artifact_dir},
         {"runMode", RunModeToString(result.run_mode)},
         {"artifacts", artifacts},
+        {"inspectionResults", inspection_results},
         {"sampleSummaries", sample_summaries},
         {"conditionResults", condition_results},
         {"comparisons", comparisons}
