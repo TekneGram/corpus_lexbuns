@@ -117,6 +117,7 @@ int RunJsonMode(const std::string& input_text) {
             command != "extractOnly" &&
             command != "analyzeOnly" &&
             command != "inspectSamplingDiagnostics" &&
+            command != "inspectExtractionDiagnostics" &&
             command != "inspectArtifacts" &&
             command != "funRun") {
             throw std::runtime_error("Unknown command: " + command);

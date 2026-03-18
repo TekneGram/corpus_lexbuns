@@ -94,7 +94,7 @@ void WriteAggregateBinary(const std::string& path, const ConditionAggregate& agg
     }
 
     const std::uint32_t magic = 0x4C424147U; // LBAG
-    const std::uint32_t version = 1U;
+    const std::uint32_t version = 2U;
     WriteUint32(&output, magic);
     WriteUint32(&output, version);
     WriteString(&output, aggregate.condition_id);
@@ -114,6 +114,19 @@ void WriteAggregateBinary(const std::string& path, const ConditionAggregate& agg
     for (std::size_t i = 0; i < aggregate.extracted_sample_counts.size(); ++i) {
         WriteUint32(&output, aggregate.extracted_sample_counts[i]);
     }
+
+    WriteUint64(&output, aggregate.extraction_telemetry.total_observed_mass);
+    WriteUint64(&output, aggregate.extraction_telemetry.total_passed_mass);
+    WriteUint64(&output, aggregate.extraction_telemetry.failed_frequency_only_mass);
+    WriteUint64(&output, aggregate.extraction_telemetry.failed_dispersion_only_mass);
+    WriteUint64(&output, aggregate.extraction_telemetry.failed_both_mass);
+
+    const std::uint64_t histogram_size =
+        static_cast<std::uint64_t>(aggregate.extraction_telemetry.retained_mass_share_histogram.size());
+    WriteUint64(&output, histogram_size);
+    for (std::size_t i = 0; i < aggregate.extraction_telemetry.retained_mass_share_histogram.size(); ++i) {
+        WriteUint32(&output, aggregate.extraction_telemetry.retained_mass_share_histogram[i]);
+    }
 }
 
 ConditionAggregate ReadAggregateBinary(const std::string& path) {
@@ -126,7 +139,7 @@ ConditionAggregate ReadAggregateBinary(const std::string& path) {
     std::uint32_t version = 0;
     input.read(reinterpret_cast<char*>(&magic), sizeof(magic));
     input.read(reinterpret_cast<char*>(&version), sizeof(version));
-    if (!input || magic != 0x4C424147U || version != 1U) {
+    if (!input || magic != 0x4C424147U || (version != 1U && version != 2U)) {
         throw std::runtime_error("Invalid aggregate artifact: " + path);
     }
 
@@ -150,6 +163,29 @@ ConditionAggregate ReadAggregateBinary(const std::string& path) {
     for (std::size_t i = 0; i < aggregate.extracted_sample_counts.size(); ++i) {
         input.read(reinterpret_cast<char*>(&aggregate.extracted_sample_counts[i]),
                    sizeof(std::uint32_t));
+    }
+
+    if (version >= 2U) {
+        input.read(reinterpret_cast<char*>(&aggregate.extraction_telemetry.total_observed_mass),
+                   sizeof(std::uint64_t));
+        input.read(reinterpret_cast<char*>(&aggregate.extraction_telemetry.total_passed_mass),
+                   sizeof(std::uint64_t));
+        input.read(reinterpret_cast<char*>(&aggregate.extraction_telemetry.failed_frequency_only_mass),
+                   sizeof(std::uint64_t));
+        input.read(reinterpret_cast<char*>(&aggregate.extraction_telemetry.failed_dispersion_only_mass),
+                   sizeof(std::uint64_t));
+        input.read(reinterpret_cast<char*>(&aggregate.extraction_telemetry.failed_both_mass),
+                   sizeof(std::uint64_t));
+
+        std::uint64_t histogram_size = 0;
+        input.read(reinterpret_cast<char*>(&histogram_size), sizeof(histogram_size));
+        aggregate.extraction_telemetry.retained_mass_share_histogram.resize(
+            static_cast<std::size_t>(histogram_size));
+        for (std::size_t i = 0; i < aggregate.extraction_telemetry.retained_mass_share_histogram.size(); ++i) {
+            input.read(reinterpret_cast<char*>(
+                           &aggregate.extraction_telemetry.retained_mass_share_histogram[i]),
+                       sizeof(std::uint32_t));
+        }
     }
 
     if (!input) {
@@ -212,6 +248,8 @@ void UnconditionalExtractor::update_aggregate(const SampleBundleStats& stats,
         if (raw_count > 0U) {
             ++aggregate->extracted_sample_counts[feature_id];
         }
+        aggregate->extraction_telemetry.total_observed_mass += raw_count;
+        aggregate->extraction_telemetry.total_passed_mass += raw_count;
     }
 }
 

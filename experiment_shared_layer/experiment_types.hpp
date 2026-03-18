@@ -16,6 +16,7 @@ enum class RunMode {
     kExtractOnly,
     kAnalyzeOnly,
     kInspectSamplingDiagnostics,
+    kInspectExtractionDiagnostics,
     kInspectArtifacts,
     kFunRun
 };
@@ -160,12 +161,29 @@ struct SampleBundleStats {
         : sample_index(0) {}
 };
 
+struct ExtractionTelemetry {
+    std::uint64_t total_observed_mass;
+    std::uint64_t total_passed_mass;
+    std::uint64_t failed_frequency_only_mass;
+    std::uint64_t failed_dispersion_only_mass;
+    std::uint64_t failed_both_mass;
+    std::vector<std::uint32_t> retained_mass_share_histogram;
+
+    ExtractionTelemetry()
+        : total_observed_mass(0),
+          total_passed_mass(0),
+          failed_frequency_only_mass(0),
+          failed_dispersion_only_mass(0),
+          failed_both_mass(0) {}
+};
+
 struct ConditionAggregate {
     std::string condition_id;
     std::uint32_t sample_count;
     bool conditional_mode;
     std::vector<double> accumulated_mass;
     std::vector<std::uint32_t> extracted_sample_counts;
+    ExtractionTelemetry extraction_telemetry;
 
     ConditionAggregate()
         : sample_count(0),

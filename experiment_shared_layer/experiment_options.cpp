@@ -156,7 +156,8 @@ ExperimentOptions ExperimentOptions::FromJson(const nlohmann::json& input) {
         ? ParseRunMode(RequireString(input, "mode"))
         : RunMode::kRunExperiment;
     if (options.mode != RunMode::kInspectArtifacts &&
-        options.mode != RunMode::kInspectSamplingDiagnostics) {
+        options.mode != RunMode::kInspectSamplingDiagnostics &&
+        options.mode != RunMode::kInspectExtractionDiagnostics) {
         options.size_configs = ReadSizeConfigs(input);
         options.composition_configs = ReadCompositionConfigs(input);
         options.frequency_thresholds_pm = ReadUint32Array(input, "frequencyThresholdsPm");
@@ -264,6 +265,15 @@ void ExperimentOptions::Validate() const {
         }
         if (artifact_input_dir.empty() && requested_experiment_code.empty()) {
             throw std::runtime_error("inspectSamplingDiagnostics requires artifactInputDir or requestedExperimentCode");
+        }
+        return;
+    }
+    if (mode == RunMode::kInspectExtractionDiagnostics) {
+        if (dataset_dir.empty()) {
+            throw std::runtime_error("datasetDir must not be empty");
+        }
+        if (artifact_input_dir.empty() && requested_experiment_code.empty()) {
+            throw std::runtime_error("inspectExtractionDiagnostics requires artifactInputDir or requestedExperimentCode");
         }
         return;
     }

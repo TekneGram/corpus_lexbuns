@@ -46,6 +46,8 @@ class ExperimentEngine {
                                              const ProgressEmitter* progress_emitter = 0) const;
         ExperimentRunResult run_sampling_diagnostics_only(const ExperimentOptions& options,
                                                           const ProgressEmitter* progress_emitter = 0) const;
+        ExperimentRunResult run_extraction_diagnostics_only(const ExperimentOptions& options,
+                                                            const ProgressEmitter* progress_emitter = 0) const;
 
     private:
         void emit_stage_progress(const ProgressEmitter* emitter,

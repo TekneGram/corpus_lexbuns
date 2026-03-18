@@ -51,6 +51,8 @@ std::string RunModeToString(RunMode mode) {
             return "analyzeOnly";
         case RunMode::kInspectSamplingDiagnostics:
             return "inspectSamplingDiagnostics";
+        case RunMode::kInspectExtractionDiagnostics:
+            return "inspectExtractionDiagnostics";
         case RunMode::kInspectArtifacts:
             return "inspectArtifacts";
         case RunMode::kFunRun:
@@ -74,6 +76,9 @@ RunMode ParseRunMode(const std::string& value) {
     }
     if (value == "inspectSamplingDiagnostics") {
         return RunMode::kInspectSamplingDiagnostics;
+    }
+    if (value == "inspectExtractionDiagnostics") {
+        return RunMode::kInspectExtractionDiagnostics;
     }
     if (value == "inspectArtifacts") {
         return RunMode::kInspectArtifacts;
@@ -193,12 +198,21 @@ nlohmann::json ToJson(const FeatureMassStat& stat) {
 }
 
 nlohmann::json ToJson(const ConditionAggregate& aggregate) {
+    nlohmann::json telemetry = nlohmann::json{
+        {"totalObservedMass", aggregate.extraction_telemetry.total_observed_mass},
+        {"totalPassedMass", aggregate.extraction_telemetry.total_passed_mass},
+        {"failedFrequencyOnlyMass", aggregate.extraction_telemetry.failed_frequency_only_mass},
+        {"failedDispersionOnlyMass", aggregate.extraction_telemetry.failed_dispersion_only_mass},
+        {"failedBothMass", aggregate.extraction_telemetry.failed_both_mass},
+        {"retainedMassShareHistogram", aggregate.extraction_telemetry.retained_mass_share_histogram}
+    };
     return nlohmann::json{
         {"conditionId", aggregate.condition_id},
         {"sampleCount", aggregate.sample_count},
         {"conditionalMode", aggregate.conditional_mode},
         {"accumulatedMass", aggregate.accumulated_mass},
-        {"extractedSampleCounts", aggregate.extracted_sample_counts}
+        {"extractedSampleCounts", aggregate.extracted_sample_counts},
+        {"extractionTelemetry", telemetry}
     };
 }
 
@@ -374,6 +388,24 @@ ConditionAggregate ConditionAggregateFromJson(const nlohmann::json& value) {
     aggregate.accumulated_mass = value["accumulatedMass"].get<std::vector<double> >();
     aggregate.extracted_sample_counts =
         value["extractedSampleCounts"].get<std::vector<std::uint32_t> >();
+    if (value.contains("extractionTelemetry") && value["extractionTelemetry"].is_object()) {
+        const nlohmann::json& telemetry = value["extractionTelemetry"];
+        aggregate.extraction_telemetry.total_observed_mass =
+            telemetry.value("totalObservedMass", static_cast<std::uint64_t>(0));
+        aggregate.extraction_telemetry.total_passed_mass =
+            telemetry.value("totalPassedMass", static_cast<std::uint64_t>(0));
+        aggregate.extraction_telemetry.failed_frequency_only_mass =
+            telemetry.value("failedFrequencyOnlyMass", static_cast<std::uint64_t>(0));
+        aggregate.extraction_telemetry.failed_dispersion_only_mass =
+            telemetry.value("failedDispersionOnlyMass", static_cast<std::uint64_t>(0));
+        aggregate.extraction_telemetry.failed_both_mass =
+            telemetry.value("failedBothMass", static_cast<std::uint64_t>(0));
+        if (telemetry.contains("retainedMassShareHistogram") &&
+            telemetry["retainedMassShareHistogram"].is_array()) {
+            aggregate.extraction_telemetry.retained_mass_share_histogram =
+                telemetry["retainedMassShareHistogram"].get<std::vector<std::uint32_t> >();
+        }
+    }
     return aggregate;
 }
 

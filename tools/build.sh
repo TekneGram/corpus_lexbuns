@@ -41,6 +41,7 @@ g++ -std=c++11 -Wall -Wextra -pedantic -I. \
   extraction_layer/conditional_extractor.cpp \
   extraction_layer/unconditional_extractor.cpp \
   analysis_layer/robust_set_builder.cpp \
+  analysis_layer/extraction_diagnostics_builder.cpp \
   analysis_layer/sampling_diagnostics_builder.cpp \
   analysis_layer/stability_analyzer.cpp \
   analysis_layer/comparison_analyzer.cpp \

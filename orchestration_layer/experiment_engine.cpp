@@ -18,6 +18,7 @@
 
 #include "../analysis_layer/artifact_inspector.hpp"
 #include "../analysis_layer/comparison_analyzer.hpp"
+#include "../analysis_layer/extraction_diagnostics_builder.hpp"
 #include "../analysis_layer/robust_set_builder.hpp"
 #include "../analysis_layer/sampling_diagnostics_builder.hpp"
 #include "../analysis_layer/stability_analyzer.hpp"
@@ -91,6 +92,11 @@ std::string StabilityArtifactName(const ExperimentCondition& condition) {
 
 std::string AggregateArtifactName(const ExperimentCondition& condition) {
     return std::string("aggregate_") + condition.condition_id + ".bin";
+}
+
+std::string ExtractionDiagnosticsPath(const std::string& artifact_root,
+                                      const ExperimentCondition& condition) {
+    return JoinPathLocal(artifact_root, ExtractionDiagnosticsArtifactName(condition));
 }
 
 std::vector<std::string> ListDirectoryFiles(const std::string& dir_path) {
@@ -629,6 +635,57 @@ ExperimentRunResult ExperimentEngine::run_sampling_diagnostics_only(
     return result;
 }
 
+ExperimentRunResult ExperimentEngine::run_extraction_diagnostics_only(
+    const ExperimentOptions& options,
+    const ProgressEmitter* progress_emitter) const {
+    const std::string artifact_root = ArtifactRootFor(options);
+    const ExperimentOptions manifest_options = LoadOptionsFromRunManifest(artifact_root);
+    CorpusDataset dataset = open_dataset(manifest_options);
+    const std::vector<ExperimentCondition> conditions = build_conditions(manifest_options, dataset);
+
+    ExperimentRunResult result;
+    result.run_mode = options.mode;
+    result.experiment_code = options.requested_experiment_code;
+    result.artifact_dir = artifact_root;
+
+    ConditionalExtractor conditional_extractor(artifact_root, false);
+    ExtractionDiagnosticsBuilder diagnostics_builder;
+
+    std::size_t completed = 0U;
+    std::size_t total = 0U;
+    for (std::size_t i = 0; i < conditions.size(); ++i) {
+        if (conditions[i].conditional_mode) {
+            ++total;
+        }
+    }
+
+    for (std::size_t i = 0; i < conditions.size(); ++i) {
+        const ExperimentCondition& condition = conditions[i];
+        if (!condition.conditional_mode) {
+            continue;
+        }
+
+        const std::string aggregate_path = join_path(artifact_root, AggregateArtifactName(condition));
+        const ConditionAggregate aggregate = conditional_extractor.load_aggregate_artifact(aggregate_path);
+        const std::string diagnostics_path = ExtractionDiagnosticsPath(artifact_root, condition);
+        diagnostics_builder.write(diagnostics_path, diagnostics_builder.build(condition, aggregate));
+
+        ArtifactDescriptor artifact;
+        artifact.artifact_type = "extraction_diagnostics";
+        artifact.artifact_path = diagnostics_path;
+        artifact.related_id = condition.condition_id;
+        result.artifacts.push_back(artifact);
+
+        ++completed;
+        emit_stage_progress(progress_emitter,
+                            "extraction_diagnostics",
+                            "extraction diagnostics written for " + condition.condition_id,
+                            static_cast<int>((100U * completed) / std::max<std::size_t>(1U, total)));
+    }
+
+    return result;
+}
+
 void ExperimentEngine::write_final_comparison_artifact(const ExperimentRunResult& result) const {
     if (result.artifact_dir.empty()) {
         return;
@@ -659,6 +716,14 @@ ExperimentRunResult ExperimentEngine::run(const ExperimentOptions& options,
         ExperimentRunResult diagnostics_result =
             run_sampling_diagnostics_only(options, progress_emitter);
         emit_stage_progress(progress_emitter, "sampling_diagnostics", "run completed", 100);
+        return diagnostics_result;
+    }
+
+    if (options.mode == RunMode::kInspectExtractionDiagnostics) {
+        emit_stage_progress(progress_emitter, "extraction_diagnostics", "run started", 0);
+        ExperimentRunResult diagnostics_result =
+            run_extraction_diagnostics_only(options, progress_emitter);
+        emit_stage_progress(progress_emitter, "extraction_diagnostics", "run completed", 100);
         return diagnostics_result;
     }
 
@@ -730,6 +795,7 @@ ExperimentRunResult ExperimentEngine::run(const ExperimentOptions& options,
             result = run_analyze_only(dataset, conditions, effective_options, progress_emitter);
             break;
         case RunMode::kInspectSamplingDiagnostics:
+        case RunMode::kInspectExtractionDiagnostics:
         case RunMode::kInspectArtifacts:
         case RunMode::kFunRun:
             break;

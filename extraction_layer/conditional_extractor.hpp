@@ -18,9 +18,19 @@ struct SampleExtractionResult {
     std::vector<FeatureId> selected_feature_ids;
     std::vector<std::uint32_t> selected_raw_counts;
     std::vector<std::uint16_t> selected_document_ranges;
+    std::uint64_t observed_raw_mass;
+    std::uint64_t passed_raw_mass;
+    std::uint64_t failed_frequency_only_mass;
+    std::uint64_t failed_dispersion_only_mass;
+    std::uint64_t failed_both_mass;
 
     SampleExtractionResult()
-        : sample_index(0) {}
+        : sample_index(0),
+          observed_raw_mass(0),
+          passed_raw_mass(0),
+          failed_frequency_only_mass(0),
+          failed_dispersion_only_mass(0),
+          failed_both_mass(0) {}
 };
 
 class ConditionalExtractor {
