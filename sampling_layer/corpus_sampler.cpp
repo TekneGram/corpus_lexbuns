@@ -216,24 +216,22 @@ std::vector<SampledCorpus> CorpusSampler::build_samples(const SamplingDesign& de
     std::vector<SampledCorpus> samples;
     samples.reserve(design.sample_count);
 
-    for (std::uint32_t sample_index = 0; sample_index < design.sample_count; ++sample_index) {
-        AttemptResult best_attempt;
-        for (std::uint32_t attempt = 0; attempt < 5U; ++attempt) {
-            const std::uint32_t seed = random_seed_
-                ^ design.random_seed
-                ^ (sample_index * 2654435761U)
-                ^ (attempt * 2246822519U);
-            AttemptResult attempt_result = AttemptBuildSample(design, pool, seed, sample_index);
-            if (attempt_result.accepted) {
-                samples.push_back(attempt_result.sample);
-                best_attempt = AttemptResult();
-                break;
-            }
-            if (attempt_result.distance < best_attempt.distance) {
-                best_attempt = attempt_result;
-            }
-            if (attempt == 4U) {
-                samples.push_back(best_attempt.sample);
+    for (std::uint32_t sample_index = 0; sample_index < design.sample_count; ) {
+        bool accepted = false;
+        for (std::uint32_t resample_round = 0; !accepted; ++resample_round) {
+            for (std::uint32_t attempt = 0; attempt < 5U; ++attempt) {
+                const std::uint32_t seed = random_seed_
+                    ^ design.random_seed
+                    ^ (sample_index * 2654435761U)
+                    ^ (resample_round * 3266489917U)
+                    ^ (attempt * 2246822519U);
+                AttemptResult attempt_result = AttemptBuildSample(design, pool, seed, sample_index);
+                if (attempt_result.accepted) {
+                    samples.push_back(attempt_result.sample);
+                    accepted = true;
+                    ++sample_index;
+                    break;
+                }
             }
         }
     }

@@ -237,6 +237,7 @@ std::string BuildConditionId(const SamplingDesign& sampling_design,
                              bool conditional_mode,
                              std::uint32_t bundle_size,
                              std::uint32_t frequency_threshold_pm,
-                             std::uint32_t document_dispersion_threshold);
+                             std::uint32_t document_dispersion_threshold,
+                             double coverage_target);
 
 } // namespace teknegram

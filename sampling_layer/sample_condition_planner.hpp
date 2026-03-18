@@ -22,6 +22,7 @@ class SampleConditionPlanner {
         ExperimentCondition build_condition(const SamplingDesign& design,
                                             bool conditional_mode,
                                             std::uint32_t frequency_threshold_pm,
+                                            double coverage_target,
                                             std::uint32_t document_dispersion_threshold,
                                             const ExperimentOptions& options) const;
         std::uint32_t frequency_threshold_raw(std::uint32_t frequency_threshold_pm,

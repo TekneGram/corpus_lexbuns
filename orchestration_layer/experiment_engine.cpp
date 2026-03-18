@@ -154,7 +154,8 @@ ExperimentCondition ExperimentEngine::build_condition(const SamplingDesign& samp
                                               conditional_mode,
                                               bundle_size,
                                               frequency_threshold_pm,
-                                              document_dispersion_threshold);
+                                              document_dispersion_threshold,
+                                              coverage_target);
     condition.bundle_size = bundle_size;
     condition.conditional_mode = conditional_mode;
     condition.corpus_size_tokens = sampling_design.corpus_size_tokens;

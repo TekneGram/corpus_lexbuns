@@ -42,17 +42,22 @@ std::vector<ExperimentCondition> SampleConditionPlanner::build_conditions_for_de
     if (options.run_conditional) {
         for (std::size_t i = 0; i < options.frequency_thresholds_pm.size(); ++i) {
             for (std::size_t j = 0; j < options.document_dispersion_thresholds.size(); ++j) {
-                conditions.push_back(build_condition(design,
-                                                     true,
-                                                     options.frequency_thresholds_pm[i],
-                                                     options.document_dispersion_thresholds[j],
-                                                     options));
+                for (std::size_t k = 0; k < options.coverage_targets.size(); ++k) {
+                    conditions.push_back(build_condition(design,
+                                                         true,
+                                                         options.frequency_thresholds_pm[i],
+                                                         options.coverage_targets[k],
+                                                         options.document_dispersion_thresholds[j],
+                                                         options));
+                }
             }
         }
     }
 
     if (options.run_unconditional) {
-        conditions.push_back(build_condition(design, false, 0, 0, options));
+        for (std::size_t i = 0; i < options.coverage_targets.size(); ++i) {
+            conditions.push_back(build_condition(design, false, 0, options.coverage_targets[i], 0, options));
+        }
     }
 
     return conditions;
@@ -75,6 +80,7 @@ ExperimentCondition SampleConditionPlanner::build_condition(
     const SamplingDesign& design,
     bool conditional_mode,
     std::uint32_t frequency_threshold_pm,
+    double coverage_target,
     std::uint32_t document_dispersion_threshold,
     const ExperimentOptions& options) const {
     ExperimentCondition condition;
@@ -82,7 +88,8 @@ ExperimentCondition SampleConditionPlanner::build_condition(
                                               conditional_mode,
                                               options.bundle_size,
                                               frequency_threshold_pm,
-                                              document_dispersion_threshold);
+                                              document_dispersion_threshold,
+                                              coverage_target);
     condition.sampling_design_id = design.sampling_design_id;
     condition.bundle_size = options.bundle_size;
     condition.conditional_mode = conditional_mode;
@@ -95,7 +102,7 @@ ExperimentCondition SampleConditionPlanner::build_condition(
         : 0U;
     condition.document_dispersion_threshold = conditional_mode ? document_dispersion_threshold : 0U;
     condition.sample_count = design.sample_count;
-    condition.coverage_target = options.coverage_target;
+    condition.coverage_target = coverage_target;
     return condition;
 }
 

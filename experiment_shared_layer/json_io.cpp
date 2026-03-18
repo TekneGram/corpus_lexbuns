@@ -93,7 +93,8 @@ std::string BuildConditionId(const SamplingDesign& sampling_design,
                              bool conditional_mode,
                              std::uint32_t bundle_size,
                              std::uint32_t frequency_threshold_pm,
-                             std::uint32_t document_dispersion_threshold) {
+                             std::uint32_t document_dispersion_threshold,
+                             double coverage_target) {
     std::string id = sampling_design.sampling_design_id;
     id += conditional_mode ? "_cond" : "_uncond";
     id += "_b" + std::to_string(bundle_size);
@@ -101,6 +102,8 @@ std::string BuildConditionId(const SamplingDesign& sampling_design,
         id += "_f" + std::to_string(frequency_threshold_pm);
         id += "_d" + std::to_string(document_dispersion_threshold);
     }
+    const std::uint32_t q_percent = static_cast<std::uint32_t>(coverage_target * 100.0 + 0.5);
+    id += "_q" + std::to_string(q_percent);
     return id;
 }
 

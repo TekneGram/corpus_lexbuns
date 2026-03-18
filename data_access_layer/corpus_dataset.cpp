@@ -66,8 +66,6 @@ void CorpusDataset::open(const std::string& dataset_dir, std::uint32_t bundle_si
     documents_ = metadata_.load_documents();
     attach_document_ranges();
     sparse_matrix_.open(JoinPath(dataset_dir, std::to_string(bundle_size) + "gram"));
-    word_lexicon_.open(JoinPath(dataset_dir, "word.lexicon.bin"));
-    ngram_lexicon_.open(JoinPath(dataset_dir, std::to_string(bundle_size) + "gram.lexicon.bin"));
 
     if (documents_.size() != sparse_matrix_.num_docs()) {
         throw std::runtime_error("Document count mismatch between metadata and sparse matrix");

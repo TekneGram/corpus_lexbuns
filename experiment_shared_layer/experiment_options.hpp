@@ -19,6 +19,7 @@ struct ExperimentOptions {
     std::uint32_t sample_count;
     std::uint32_t bundle_size;
     double coverage_target;
+    std::vector<double> coverage_targets;
     std::uint32_t random_seed;
     bool run_conditional;
     bool run_unconditional;

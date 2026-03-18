@@ -38,6 +38,11 @@ void StabilityAnalyzer::write(const std::string& artifact_path,
 }
 
 double StabilityAnalyzer::entropy(const std::vector<FeatureMassStat>& ranked_features) {
+    const std::size_t feature_count = ranked_features.size();
+    if (feature_count <= 1U) {
+        return 0.0;
+    }
+
     double total = 0.0;
     for (std::size_t i = 0; i < ranked_features.size(); ++i) {
         total += ranked_features[i].normalized_mass;
@@ -53,7 +58,12 @@ double StabilityAnalyzer::entropy(const std::vector<FeatureMassStat>& ranked_fea
             value -= p * std::log(p);
         }
     }
-    return value;
+
+    const double max_entropy = std::log(static_cast<double>(feature_count));
+    if (max_entropy <= 0.0) {
+        return 0.0;
+    }
+    return value / max_entropy;
 }
 
 double StabilityAnalyzer::top_feature_share(const std::vector<FeatureMassStat>& ranked_features) {

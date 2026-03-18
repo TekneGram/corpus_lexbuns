@@ -109,6 +109,28 @@ double ParseDoubleArgument(const char* name, const std::string& value) {
     return parsed;
 }
 
+std::vector<double> ReadCoverageTargets(const nlohmann::json& input) {
+    std::vector<double> values;
+    if (input.contains("coverageTargets")) {
+        if (!input["coverageTargets"].is_array()) {
+            throw std::runtime_error("Invalid array field: coverageTargets");
+        }
+        const nlohmann::json& array = input["coverageTargets"];
+        for (nlohmann::json::size_type i = 0; i < array.size(); ++i) {
+            if (!array[i].is_number()) {
+                throw std::runtime_error("Invalid numeric element in array field: coverageTargets");
+            }
+            values.push_back(array[i].get<double>());
+        }
+        return values;
+    }
+    if (input.contains("coverageTarget")) {
+        values.push_back(RequireDouble(input, "coverageTarget"));
+        return values;
+    }
+    throw std::runtime_error("Missing coverageTarget or coverageTargets");
+}
+
 } // namespace
 
 ExperimentOptions::ExperimentOptions()
@@ -122,7 +144,9 @@ ExperimentOptions::ExperimentOptions()
       emit_sample_level_sets(false),
       emit_intermediate_artifacts(true),
       emit_debug_bundle_counts(false),
-      emit_sample_summary_json(true) {}
+      emit_sample_summary_json(true) {
+    coverage_targets.push_back(coverage_target);
+}
 
 ExperimentOptions ExperimentOptions::FromJson(const nlohmann::json& input) {
     ExperimentOptions options;
@@ -138,7 +162,8 @@ ExperimentOptions ExperimentOptions::FromJson(const nlohmann::json& input) {
         options.document_dispersion_thresholds = ReadUint32Array(input, "documentDispersionThresholds");
         options.sample_count = RequireUint32(input, "sampleCount");
         options.bundle_size = RequireUint32(input, "bundleSize");
-        options.coverage_target = RequireDouble(input, "coverageTarget");
+        options.coverage_targets = ReadCoverageTargets(input);
+        options.coverage_target = options.coverage_targets.front();
         options.random_seed = RequireUint32(input, "randomSeed");
     }
     options.run_conditional = ReadBoolOrDefault(input, "runConditional", true);
@@ -167,6 +192,7 @@ ExperimentOptions ExperimentOptions::FromCli(int argc, char** argv) {
     }
     if (argc > 5) {
         options.coverage_target = ParseDoubleArgument("coverageTarget", argv[5]);
+        options.coverage_targets.assign(1, options.coverage_target);
     }
     if (argc > 6) {
         options.random_seed = ParseUnsignedArgument("randomSeed", argv[6]);
@@ -211,6 +237,7 @@ nlohmann::json ExperimentOptions::ToJson() const {
         {"sampleCount", sample_count},
         {"bundleSize", bundle_size},
         {"coverageTarget", coverage_target},
+        {"coverageTargets", coverage_targets},
         {"randomSeed", random_seed},
         {"runConditional", run_conditional},
         {"runUnconditional", run_unconditional},
@@ -247,6 +274,14 @@ void ExperimentOptions::Validate() const {
     }
     if (coverage_target <= 0.0 || coverage_target > 1.0) {
         throw std::runtime_error("coverageTarget must be in the interval (0, 1]");
+    }
+    if (coverage_targets.empty()) {
+        throw std::runtime_error("At least one coverage target is required");
+    }
+    for (std::size_t i = 0; i < coverage_targets.size(); ++i) {
+        if (coverage_targets[i] <= 0.0 || coverage_targets[i] > 1.0) {
+            throw std::runtime_error("coverageTargets values must be in the interval (0, 1]");
+        }
     }
 }
 

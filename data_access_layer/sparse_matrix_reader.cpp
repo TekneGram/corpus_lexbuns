@@ -14,7 +14,7 @@ struct SparseMatrixMetaFile {
     std::uint64_t num_features;
     std::uint64_t num_nonzero;
     std::uint32_t entry_size_bytes;
-    char reserved[32];
+    char reserved[28];
 };
 
 void ReadBytes(const std::string& path, char* data, std::streamsize size) {
